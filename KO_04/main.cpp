@@ -1,9 +1,11 @@
 #include <iostream>
 #include <utility>
 #include <string>
+#include <string_view>
 #include <random>
 #include <chrono>
 #include <thread>
+#include <array>
 using namespace std;
 
 struct City {
@@ -77,11 +79,29 @@ struct City {
 
 	void public_transport_activity() {
 		// logic to show public transport activities on each turn
+		cout << "Public transport currently unavailable" << endl;
 	}
 
-	void show_suburb_data() {
+	void show_suburb_data(SuburbPopulation suburb, const char* const suburb_names[]) {
 		// logic to show latest data of suburbs on each turn
+		cout << "-----------------------------" << endl;
+		cout << "Suburb: " << suburb_names[suburb.suburb] << endl;
+		cout << "Population: " << suburb.population << endl;
+		cout << "Workers: " << suburb.civilians.workers.second << endl;
+		cout << "Teachers: " << suburb.civilians.teachers.second << endl;
+		cout << "Artists: " << suburb.civilians.artists.second << endl;
 	}
+};
+
+constexpr const char* suburb_names[8] = {
+    "Low Residential",      // index 0 = low_residential
+    "High Residential",     // index 1 = high_residential
+    "Entertainment",        // index 2 = entertainment
+    "Industrial",           // index 3 = industrial
+    "Commercial",           // index 4 = commercial
+    "Administrative",       // index 5 = administrative
+    "Train Station",        // index 6 = train_station
+    "Prison"                // index 7 = prison
 };
 
 int main() {
@@ -111,11 +131,18 @@ int main() {
 	bool continue_simulation = true;
 
 	while (continue_simulation) {
-		// show suburb data and public transport activities
-		brisbane.show_suburb_data();
-		brisbane.public_transport_activity();
-
 		this_thread::sleep_for(chrono::seconds(1)); // pause for a moment to simulate time passing
+
+		// show suburb data and public transport activities
+		brisbane.show_suburb_data(low_residential_population, suburb_names);
+		brisbane.show_suburb_data(high_residential_population, suburb_names);
+		brisbane.show_suburb_data(entertainment_population, suburb_names);
+		brisbane.show_suburb_data(industrial_population, suburb_names);
+		brisbane.show_suburb_data(commercial_population, suburb_names);
+		brisbane.show_suburb_data(administrative_population, suburb_names);
+		brisbane.show_suburb_data(train_station_population, suburb_names);
+		brisbane.show_suburb_data(prison_population, suburb_names);
+		brisbane.public_transport_activity();
 
 		// randomly move civilians between suburbs
 		brisbane.move_civilians_randomly();
