@@ -82,6 +82,8 @@ int main() {
 	City::PublicTransport tram = { "tram", 100 };
 	City::PublicTransport ferry = { "ferry", 200 };
 
+	cout << "End of city simulation " << endl;
+
 	return 0;
 }
 
