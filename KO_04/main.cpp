@@ -52,21 +52,51 @@ struct City {
 		};
 	}
 
-	struct PublicTransport {
-		string type; // e.g., bus, tram, ferry
-		unsigned int capacity;
-	};
-
-	bool is_island(Suburbs suburb) {
+	bool is_Island(Suburbs suburb) {
 		return suburb == prison; // prison is the island suburb as per reference image
 	}
 
-	bool is_coastal(Suburbs suburb) {
+	bool is_Coastal(Suburbs suburb) {
 		return suburb == industrial || suburb == high_residential; // coastal suburbs
 	}
 
-	void move_civilians_randomly() {
-		// logic to move civilians randomly between suburbs based on public transport availability
+	// low residential = 1, high residential = 2, administrative = 3, commercial = 4, entertainment = 5, industrial = 6, train station = 7, prison = 8
+	// low residential is adjacent to high residential, administrative, commercial and entertainment
+	// high residential is adjacent to low residential, administrative and industrial
+	// administrative is adjacent to low residential, high residential, commercial and industrial
+	// commercial is adjacent to low residential, administrative, entertainment and industrial
+	// entertainment is adjacent to low residential, commercial, industrial and train station
+	// industrial is adjacent to high residential, administrative, commercial and entertainment
+	// train station is adjacent to entertainment
+	// prison is adjacent to nothing
+	bool is_Adjacent(Suburbs suburb1, Suburbs suburb2) {
+		// logic to determine if two suburbs are adjacent based on a predefined adjacency list
+		if ((suburb1 == low_residential && suburb2 == high_residential) || (suburb1 == low_residential && suburb2 == administrative) || (suburb1 == low_residential && suburb2 == commercial) || (suburb1 == low_residential && suburb2 == entertainment) || // low residential
+			(suburb1 == high_residential && suburb2 == low_residential) || (suburb1 == high_residential && suburb2 == administrative) || (suburb1 == high_residential && suburb2 == industrial) || // high residential
+			(suburb1 == administrative && suburb2 == low_residential) || (suburb1 == administrative && suburb2 == high_residential) || (suburb1 == administrative && suburb2 == commercial) || (suburb1 == administrative && suburb2 == industrial) || // administrative
+			(suburb1 == commercial && suburb2 == low_residential) || (suburb1 == commercial && suburb2 == administrative) || (suburb1 == commercial && suburb2 == entertainment) || (suburb1 == commercial && suburb2 == industrial) || // commercial
+			(suburb1 == entertainment && suburb2 == low_residential) || (suburb1 == entertainment && suburb2 == commercial) || (suburb1 == entertainment && suburb2 == industrial) || (suburb1 == entertainment && suburb2 == train_station) || // entertainment
+			(suburb1 == industrial && suburb2 == high_residential) || (suburb1 == industrial && suburb2 == administrative) || (suburb1 == industrial && suburb2 == commercial) || (suburb1 == industrial && suburb2 == entertainment) || // industrial
+			(suburb1 == train_station && suburb2 == entertainment)) { // train station
+			return true;
+		}
+		else false;
+	}
+
+	void move_civilians_randomly(SuburbPopulation& population_i, array<SuburbPopulation*, 8>& all_suburbs) {
+		mt19937 mt{ static_cast<unsigned int>(chrono::steady_clock::now().time_since_epoch().count()) };
+		uniform_int_distribution<int> popul(0, 50); // 0-50% range
+
+		for (int i = 0; i < 8; ++i) {
+			for (int j = 0; j < 8; ++j) {
+				if (i != j && is_Adjacent(static_cast<Suburbs>(i), static_cast<Suburbs>(j))) {
+					int moveCount = static_cast<int>(population_i.population * popul(mt) / 100.0f);
+					
+					population_i.population -= moveCount;
+					all_suburbs[j]->population += moveCount;
+				}
+			}
+		}
 	}
 
 	void move_to_island() {
@@ -122,10 +152,16 @@ int main() {
 	City::SuburbPopulation train_station_population = { City::train_station, brisbane.distribute_civilians(10000) };
 	City::SuburbPopulation prison_population = { City::prison, brisbane.distribute_civilians(500) };
 
-	// initialize public transport
-	City::PublicTransport bus = { "bus", 50 };
-	City::PublicTransport tram = { "tram", 100 };
-	City::PublicTransport ferry = { "ferry", 200 };
+	array<City::SuburbPopulation*, 8> all_suburbs = {
+		&low_residential_population,
+		&high_residential_population,
+		&entertainment_population,
+		&industrial_population,
+		&commercial_population,
+		&administrative_population,
+		&train_station_population,
+		&prison_population
+	};
 
 	// simulate city activities for as many turns as player wants
 	bool continue_simulation = true;
@@ -145,7 +181,13 @@ int main() {
 		brisbane.public_transport_activity();
 
 		// randomly move civilians between suburbs
-		brisbane.move_civilians_randomly();
+		brisbane.move_civilians_randomly(low_residential_population, all_suburbs);
+		brisbane.move_civilians_randomly(high_residential_population, all_suburbs);
+		brisbane.move_civilians_randomly(entertainment_population, all_suburbs);
+		brisbane.move_civilians_randomly(industrial_population, all_suburbs);
+		brisbane.move_civilians_randomly(commercial_population, all_suburbs);
+		brisbane.move_civilians_randomly(administrative_population, all_suburbs);
+		brisbane.move_civilians_randomly(train_station_population, all_suburbs);
 
 		// randomly trigger natural disaster every n turns
 		if (uniform_int_distribution<int>(1, 10)(mt) == 1) { // 10% chance of natural disaster each turn
