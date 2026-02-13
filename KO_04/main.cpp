@@ -41,7 +41,7 @@ struct City {
 	};
 
 	// helper function to distribute population among civilian types
-	SuburbPopulation::Civilians distribute_civilians(unsigned int total_population, float worker_ratio = 0.6f, float teacher_ratio = 0.25f, float artist_ratio = 0.15f) {
+	SuburbPopulation::Civilians distributeCivilians(unsigned int total_population, float worker_ratio = 0.6f, float teacher_ratio = 0.25f, float artist_ratio = 0.15f) {
 		unsigned int workers = static_cast<unsigned int>(total_population * worker_ratio);
 		unsigned int teachers = static_cast<unsigned int>(total_population * teacher_ratio);
 		unsigned int artists = static_cast<unsigned int>(total_population * artist_ratio);
@@ -53,7 +53,7 @@ struct City {
 		};
 	}
 
-	SuburbPopulation::Civilians redistribute_Population(unsigned int total_population, float worker_ratio = 0.6f, float teacher_ratio = 0.25f, float artist_ratio = 0.15f) {
+	SuburbPopulation::Civilians redistributePopulation(unsigned int total_population, float worker_ratio = 0.6f, float teacher_ratio = 0.25f, float artist_ratio = 0.15f) {
 		// redistribute population after civilians have moved to new suburbs
 		unsigned int workers = static_cast<unsigned int>(total_population * worker_ratio);
 		unsigned int teachers = static_cast<unsigned int>(total_population * teacher_ratio);
@@ -66,7 +66,8 @@ struct City {
 		};
 	}
 
-	bool is_Coastal_Or_Prison(Suburbs suburb) {
+	bool isCoastalOrPrison(Suburbs suburb) {
+		// logic to determine if a suburb is coastal or prison based on its enum value (refer to reference image)
 		return suburb == industrial || suburb == high_residential || suburb == prison; // coastal and prison suburbs
 	}
 
@@ -79,8 +80,8 @@ struct City {
 	// industrial is adjacent to high residential, administrative, commercial, entertainment and prison
 	// train station is adjacent to entertainment
 	// prison is adjacent to high residential and industrial as they are coastal suburbs
-	bool is_Adjacent(Suburbs suburb1, Suburbs suburb2) {
-		// logic to determine if two suburbs are adjacent based on a predefined adjacency list
+	bool isAdjacent(Suburbs suburb1, Suburbs suburb2) {
+		// logic to determine if two suburbs are adjacent based on a predefined adjacency list (refer to comments above and reference image)
 		if ((suburb1 == low_residential && suburb2 == high_residential) || (suburb1 == low_residential && suburb2 == administrative) || (suburb1 == low_residential && suburb2 == commercial) || (suburb1 == low_residential && suburb2 == entertainment) || // low residential
 			(suburb1 == high_residential && suburb2 == low_residential) || (suburb1 == high_residential && suburb2 == administrative) || (suburb1 == high_residential && suburb2 == industrial) || // high residential
 			(suburb1 == administrative && suburb2 == low_residential) || (suburb1 == administrative && suburb2 == high_residential) || (suburb1 == administrative && suburb2 == commercial) || (suburb1 == administrative && suburb2 == industrial) || // administrative
@@ -88,18 +89,19 @@ struct City {
 			(suburb1 == entertainment && suburb2 == low_residential) || (suburb1 == entertainment && suburb2 == commercial) || (suburb1 == entertainment && suburb2 == industrial) || (suburb1 == entertainment && suburb2 == train_station) || // entertainment
 			(suburb1 == industrial && suburb2 == high_residential) || (suburb1 == industrial && suburb2 == administrative) || (suburb1 == industrial && suburb2 == commercial) || (suburb1 == industrial && suburb2 == entertainment) || // industrial
 			(suburb1 == train_station && suburb2 == entertainment) || // train station
-			(is_Coastal_Or_Prison(suburb1) && is_Coastal_Or_Prison(suburb2))) { // prison is adjacent to coastal suburbs
+			(isCoastalOrPrison(suburb1) && isCoastalOrPrison(suburb2))) { // prison is adjacent to coastal suburbs
 			return true;
 		}
 		else false;
 	}
 
-	void move_civilians_randomly(int suburb_index, SuburbPopulation& population_i, array<SuburbPopulation*, 8>& all_suburbs, const char* const suburb_names[]) {
+	void moveCiviliansRandomly(int suburb_index, SuburbPopulation& population_i, array<SuburbPopulation*, 8>& all_suburbs, const char* const suburb_names[]) {
+		// logic to randomly move civilians between adjacent suburbs using public transport or ferry line for coastal suburbs
 		mt19937 mt{ static_cast<unsigned int>(chrono::steady_clock::now().time_since_epoch().count()) };
 		uniform_int_distribution<int> popul(0, 50); // 0-50% range
 
 		for (int j = 0; j < 8; ++j) {
-			if (suburb_index != j && is_Adjacent(static_cast<Suburbs>(suburb_index), static_cast<Suburbs>(j))) {
+			if (suburb_index != j && isAdjacent(static_cast<Suburbs>(suburb_index), static_cast<Suburbs>(j))) {
 				int moveCount = static_cast<int>(population_i.population * popul(mt) / 100.0f);
 				
 				population_i.population -= moveCount;
@@ -114,12 +116,12 @@ struct City {
 		cout << "-----------------------------" << endl;
 	}
 
-	void evacuate_to_closest_suburbs(int suburb_index, SuburbPopulation& population_i, array<SuburbPopulation*, 8>& all_suburbs, const char* const suburb_names[]) {
+	void evacuateToClosestSuburbs(int suburb_index, SuburbPopulation& population_i, array<SuburbPopulation*, 8>& all_suburbs, const char* const suburb_names[]) {
 		// logic to evacuate civilians to the closest suburbs in case of a natural disaster
 		vector<int> adjacent_suburbs;
 
 		for (int j = 0; j < 8; ++j) {
-			if (suburb_index != j && is_Adjacent(static_cast<Suburbs>(suburb_index), static_cast<Suburbs>(j))) {
+			if (suburb_index != j && isAdjacent(static_cast<Suburbs>(suburb_index), static_cast<Suburbs>(j))) {
 				adjacent_suburbs.push_back(j);
 			}
 		}
@@ -133,7 +135,7 @@ struct City {
 		}
 	}
 
-	void show_suburb_data(SuburbPopulation suburb, const char* const suburb_names[]) {
+	void showSuburbData(SuburbPopulation suburb, const char* const suburb_names[]) {
 		// logic to show latest data of suburbs on each turn
 		cout << "-----------------------------" << endl;
 		cout << "Suburb: " << suburb_names[suburb.suburb] << endl;
@@ -144,6 +146,7 @@ struct City {
 	}
 };
 
+// array of suburb names for display purposes
 constexpr const char* suburb_names[8] = {
     "Low Residential",      // index 0 = low_residential
     "High Residential",     // index 1 = high_residential
@@ -164,15 +167,16 @@ int main() {
 	uniform_int_distribution<int> popul(1000, 200000); // for random suburb selection
 
 	// initialize suburb populations with distributed civilians
-	City::SuburbPopulation low_residential_population = { City::low_residential, brisbane.distribute_civilians(popul(mt)) };
-	City::SuburbPopulation high_residential_population = { City::high_residential, brisbane.distribute_civilians(popul(mt)) };
-	City::SuburbPopulation entertainment_population = { City::entertainment, brisbane.distribute_civilians(popul(mt), 0.3f, 0.2f, 0.5f) };
-	City::SuburbPopulation industrial_population = { City::industrial, brisbane.distribute_civilians(popul(mt), 0.7f, 0.1f, 0.2f) };
-	City::SuburbPopulation commercial_population = { City::commercial, brisbane.distribute_civilians(popul(mt)) };
-	City::SuburbPopulation administrative_population = { City::administrative, brisbane.distribute_civilians(popul(mt), 0.5f, 0.4f, 0.1f) };
-	City::SuburbPopulation train_station_population = { City::train_station, brisbane.distribute_civilians(10000) };
-	City::SuburbPopulation prison_population = { City::prison, brisbane.distribute_civilians(500) };
+	City::SuburbPopulation low_residential_population = { City::low_residential, brisbane.distributeCivilians(popul(mt)) };
+	City::SuburbPopulation high_residential_population = { City::high_residential, brisbane.distributeCivilians(popul(mt)) };
+	City::SuburbPopulation entertainment_population = { City::entertainment, brisbane.distributeCivilians(popul(mt), 0.3f, 0.2f, 0.5f) };
+	City::SuburbPopulation industrial_population = { City::industrial, brisbane.distributeCivilians(popul(mt), 0.7f, 0.1f, 0.2f) };
+	City::SuburbPopulation commercial_population = { City::commercial, brisbane.distributeCivilians(popul(mt)) };
+	City::SuburbPopulation administrative_population = { City::administrative, brisbane.distributeCivilians(popul(mt), 0.5f, 0.4f, 0.1f) };
+	City::SuburbPopulation train_station_population = { City::train_station, brisbane.distributeCivilians(10000) };
+	City::SuburbPopulation prison_population = { City::prison, brisbane.distributeCivilians(500) };
 
+	// array of pointers to all suburb populations for easy access when moving civilians
 	array<City::SuburbPopulation*, 8> all_suburbs = {
 		&low_residential_population,
 		&high_residential_population,
@@ -191,14 +195,14 @@ int main() {
 		this_thread::sleep_for(chrono::seconds(1)); // pause for 1 second to simulate processing time
 
 		// show suburb population data
-		brisbane.show_suburb_data(low_residential_population, suburb_names);
-		brisbane.show_suburb_data(high_residential_population, suburb_names);
-		brisbane.show_suburb_data(entertainment_population, suburb_names);
-		brisbane.show_suburb_data(industrial_population, suburb_names);
-		brisbane.show_suburb_data(commercial_population, suburb_names);
-		brisbane.show_suburb_data(administrative_population, suburb_names);
-		brisbane.show_suburb_data(train_station_population, suburb_names);
-		brisbane.show_suburb_data(prison_population, suburb_names);
+		brisbane.showSuburbData(low_residential_population, suburb_names);
+		brisbane.showSuburbData(high_residential_population, suburb_names);
+		brisbane.showSuburbData(entertainment_population, suburb_names);
+		brisbane.showSuburbData(industrial_population, suburb_names);
+		brisbane.showSuburbData(commercial_population, suburb_names);
+		brisbane.showSuburbData(administrative_population, suburb_names);
+		brisbane.showSuburbData(train_station_population, suburb_names);
+		brisbane.showSuburbData(prison_population, suburb_names);
 
 		// ask player if they want to continue simulation or exit before moving civilians
 		char choice;
@@ -214,35 +218,35 @@ int main() {
 		this_thread::sleep_for(chrono::seconds(1)); // allow 1 second for player to read data before moving civilians
 
 		// randomly move civilians between suburbs
-		brisbane.move_civilians_randomly(0, low_residential_population, all_suburbs, suburb_names);
-		brisbane.move_civilians_randomly(1, high_residential_population, all_suburbs, suburb_names);
-		brisbane.move_civilians_randomly(2, entertainment_population, all_suburbs, suburb_names);
-		brisbane.move_civilians_randomly(3, industrial_population, all_suburbs, suburb_names);
-		brisbane.move_civilians_randomly(4, commercial_population, all_suburbs, suburb_names);
-		brisbane.move_civilians_randomly(5, administrative_population, all_suburbs, suburb_names);
-		brisbane.move_civilians_randomly(6, train_station_population, all_suburbs, suburb_names);
-		brisbane.move_civilians_randomly(7, prison_population, all_suburbs, suburb_names);
+		brisbane.moveCiviliansRandomly(0, low_residential_population, all_suburbs, suburb_names);
+		brisbane.moveCiviliansRandomly(1, high_residential_population, all_suburbs, suburb_names);
+		brisbane.moveCiviliansRandomly(2, entertainment_population, all_suburbs, suburb_names);
+		brisbane.moveCiviliansRandomly(3, industrial_population, all_suburbs, suburb_names);
+		brisbane.moveCiviliansRandomly(4, commercial_population, all_suburbs, suburb_names);
+		brisbane.moveCiviliansRandomly(5, administrative_population, all_suburbs, suburb_names);
+		brisbane.moveCiviliansRandomly(6, train_station_population, all_suburbs, suburb_names);
+		brisbane.moveCiviliansRandomly(7, prison_population, all_suburbs, suburb_names);
 
 		// randomly trigger natural disaster
-		if (uniform_int_distribution<int>(1, 1)(mt) == 1) { // 10% chance of natural disaster each turn
+		if (uniform_int_distribution<int>(1, 10)(mt) == 1) { // 10% chance of natural disaster each turn
 			uniform_int_distribution<int> suburb_disaster(0, 7);
 			int disaster_suburb = suburb_disaster(mt);
 
 			cout << "Natural disaster occurred in " << suburb_names[disaster_suburb] << "! Enter any key to evacuate civilians." << endl;
 			cin >> choice;
 
-			brisbane.evacuate_to_closest_suburbs(disaster_suburb, *all_suburbs[disaster_suburb], all_suburbs, suburb_names);
+			brisbane.evacuateToClosestSuburbs(disaster_suburb, *all_suburbs[disaster_suburb], all_suburbs, suburb_names);
 		}
 
 		// redistribute civilian type population
-		low_residential_population = { City::low_residential, brisbane.redistribute_Population(low_residential_population.population)};
-		high_residential_population = { City::high_residential, brisbane.redistribute_Population(high_residential_population.population) };
-		entertainment_population = { City::entertainment, brisbane.redistribute_Population(entertainment_population.population) };
-		industrial_population = { City::industrial, brisbane.redistribute_Population(industrial_population.population) };
-		commercial_population = { City::commercial, brisbane.redistribute_Population(commercial_population.population) };
-		administrative_population = { City::administrative, brisbane.redistribute_Population(administrative_population.population) };
-		train_station_population = { City::train_station, brisbane.redistribute_Population(train_station_population.population) };
-		prison_population = { City::prison, brisbane.redistribute_Population(prison_population.population) };
+		low_residential_population = { City::low_residential, brisbane.redistributePopulation(low_residential_population.population)};
+		high_residential_population = { City::high_residential, brisbane.redistributePopulation(high_residential_population.population) };
+		entertainment_population = { City::entertainment, brisbane.redistributePopulation(entertainment_population.population) };
+		industrial_population = { City::industrial, brisbane.redistributePopulation(industrial_population.population) };
+		commercial_population = { City::commercial, brisbane.redistributePopulation(commercial_population.population) };
+		administrative_population = { City::administrative, brisbane.redistributePopulation(administrative_population.population) };
+		train_station_population = { City::train_station, brisbane.redistributePopulation(train_station_population.population) };
+		prison_population = { City::prison, brisbane.redistributePopulation(prison_population.population) };
 
 		// ask player if they want to continue simulation
 		cout << "Continue simulation? (y/n): ";
@@ -250,7 +254,7 @@ int main() {
 		continue_simulation = (choice == 'y' || choice == 'Y');
 	}
 
-	cout << "End of city simulation " << endl;
+	cout << "End of city simulation " << endl; // flush output buffer before exiting
 
 	return 0;
 }
