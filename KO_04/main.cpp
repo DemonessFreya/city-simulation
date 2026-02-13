@@ -52,23 +52,19 @@ struct City {
 		};
 	}
 
-	bool is_Island(Suburbs suburb) {
-		return suburb == prison; // prison is the island suburb as per reference image
-	}
-
-	bool is_Coastal(Suburbs suburb) {
-		return suburb == industrial || suburb == high_residential; // coastal suburbs
+	bool is_Coastal_Or_Prison(Suburbs suburb) {
+		return suburb == industrial || suburb == high_residential || suburb == prison; // coastal and prison suburbs
 	}
 
 	// low residential = 1, high residential = 2, administrative = 3, commercial = 4, entertainment = 5, industrial = 6, train station = 7, prison = 8
 	// low residential is adjacent to high residential, administrative, commercial and entertainment
-	// high residential is adjacent to low residential, administrative and industrial
+	// high residential is adjacent to low residential, administrative, industrial and prison
 	// administrative is adjacent to low residential, high residential, commercial and industrial
 	// commercial is adjacent to low residential, administrative, entertainment and industrial
 	// entertainment is adjacent to low residential, commercial, industrial and train station
-	// industrial is adjacent to high residential, administrative, commercial and entertainment
+	// industrial is adjacent to high residential, administrative, commercial, entertainment and prison
 	// train station is adjacent to entertainment
-	// prison is adjacent to nothing
+	// prison is adjacent to high residential and industrial as they are coastal suburbs
 	bool is_Adjacent(Suburbs suburb1, Suburbs suburb2) {
 		// logic to determine if two suburbs are adjacent based on a predefined adjacency list
 		if ((suburb1 == low_residential && suburb2 == high_residential) || (suburb1 == low_residential && suburb2 == administrative) || (suburb1 == low_residential && suburb2 == commercial) || (suburb1 == low_residential && suburb2 == entertainment) || // low residential
@@ -77,39 +73,49 @@ struct City {
 			(suburb1 == commercial && suburb2 == low_residential) || (suburb1 == commercial && suburb2 == administrative) || (suburb1 == commercial && suburb2 == entertainment) || (suburb1 == commercial && suburb2 == industrial) || // commercial
 			(suburb1 == entertainment && suburb2 == low_residential) || (suburb1 == entertainment && suburb2 == commercial) || (suburb1 == entertainment && suburb2 == industrial) || (suburb1 == entertainment && suburb2 == train_station) || // entertainment
 			(suburb1 == industrial && suburb2 == high_residential) || (suburb1 == industrial && suburb2 == administrative) || (suburb1 == industrial && suburb2 == commercial) || (suburb1 == industrial && suburb2 == entertainment) || // industrial
-			(suburb1 == train_station && suburb2 == entertainment)) { // train station
+			(suburb1 == train_station && suburb2 == entertainment) || // train station
+			(is_Coastal_Or_Prison(suburb1) && is_Coastal_Or_Prison(suburb2))) { // prison is adjacent to coastal suburbs
 			return true;
 		}
 		else false;
 	}
 
-	void move_civilians_randomly(SuburbPopulation& population_i, array<SuburbPopulation*, 8>& all_suburbs) {
+	void move_civilians_randomly(int suburb_index, SuburbPopulation& population_i, array<SuburbPopulation*, 8>& all_suburbs, const char* const suburb_names[]) {
 		mt19937 mt{ static_cast<unsigned int>(chrono::steady_clock::now().time_since_epoch().count()) };
 		uniform_int_distribution<int> popul(0, 50); // 0-50% range
 
-		for (int i = 0; i < 8; ++i) {
-			for (int j = 0; j < 8; ++j) {
-				if (i != j && is_Adjacent(static_cast<Suburbs>(i), static_cast<Suburbs>(j))) {
-					int moveCount = static_cast<int>(population_i.population * popul(mt) / 100.0f);
-					
-					population_i.population -= moveCount;
-					all_suburbs[j]->population += moveCount;
-				}
+		for (int j = 0; j < 8; ++j) {
+			if (suburb_index != j && is_Adjacent(static_cast<Suburbs>(suburb_index), static_cast<Suburbs>(j))) {
+				int moveCount = static_cast<int>(population_i.population * popul(mt) / 100.0f);
+				
+				population_i.population -= moveCount;
+				all_suburbs[j]->population += moveCount;
+
+				cout << moveCount << " civilians moved from " << suburb_names[suburb_index] << " to " << suburb_names[j] << endl;
+
+				this_thread::sleep_for(chrono::milliseconds(500)); // simulate half a second for civilians to move between suburbs
 			}
 		}
+
+		cout << "-----------------------------" << endl;
 	}
 
-	void move_to_island() {
-		// logic to move civilians to the island suburb (prison)
-	}
-
-	void evacuate_to_closest_suburbs() {
+	void evacuate_to_closest_suburbs(int suburb_index, SuburbPopulation& population_i, array<SuburbPopulation*, 8>& all_suburbs, const char* const suburb_names[]) {
 		// logic to evacuate civilians to the closest suburbs in case of a natural disaster
-	}
+		for (int j = 0; j < 8; ++j) {
 
-	void public_transport_activity() {
-		// logic to show public transport activities on each turn
-		cout << "Public transport currently unavailable" << endl;
+
+			//if (suburb_index != j && is_Adjacent(static_cast<Suburbs>(suburb_index), static_cast<Suburbs>(j))) {
+			//	int evacCount = static_cast<int>(population_i.population);
+
+			//	population_i.population -= evacCount;
+			//	all_suburbs[j]->population += evacCount;
+
+			//	this_thread::sleep_for(chrono::milliseconds(300)); // simulate 300 milliseconds for evacuation
+
+			//	cout << evacCount << " civilians evacuated from " << suburb_names[suburb_index] << " to " << suburb_names[j] << endl;
+			//}
+		}
 	}
 
 	void show_suburb_data(SuburbPopulation suburb, const char* const suburb_names[]) {
@@ -167,9 +173,9 @@ int main() {
 	bool continue_simulation = true;
 
 	while (continue_simulation) {
-		this_thread::sleep_for(chrono::seconds(1)); // pause for a moment to simulate time passing
+		this_thread::sleep_for(chrono::seconds(1)); // pause for 1 second to simulate processing time
 
-		// show suburb data and public transport activities
+		// show suburb population data
 		brisbane.show_suburb_data(low_residential_population, suburb_names);
 		brisbane.show_suburb_data(high_residential_population, suburb_names);
 		brisbane.show_suburb_data(entertainment_population, suburb_names);
@@ -178,25 +184,42 @@ int main() {
 		brisbane.show_suburb_data(administrative_population, suburb_names);
 		brisbane.show_suburb_data(train_station_population, suburb_names);
 		brisbane.show_suburb_data(prison_population, suburb_names);
-		brisbane.public_transport_activity();
+
+		// ask player if they want to continue simulation or exit before moving civilians
+		char choice;
+		cout << "Enter any key to continue or 'n' if you want to exit" << endl;
+		cin >> choice;
+		if (choice == 'n' || choice == 'N') {
+			continue_simulation = false;
+			break;
+		}
+
+		cout << "-----------------------------" << endl;
+		cout << "Civilians are moving between suburbs..." << endl;
+		this_thread::sleep_for(chrono::seconds(1)); // allow 1 second for player to read data before moving civilians
 
 		// randomly move civilians between suburbs
-		brisbane.move_civilians_randomly(low_residential_population, all_suburbs);
-		brisbane.move_civilians_randomly(high_residential_population, all_suburbs);
-		brisbane.move_civilians_randomly(entertainment_population, all_suburbs);
-		brisbane.move_civilians_randomly(industrial_population, all_suburbs);
-		brisbane.move_civilians_randomly(commercial_population, all_suburbs);
-		brisbane.move_civilians_randomly(administrative_population, all_suburbs);
-		brisbane.move_civilians_randomly(train_station_population, all_suburbs);
+		brisbane.move_civilians_randomly(0, low_residential_population, all_suburbs, suburb_names);
+		brisbane.move_civilians_randomly(1, high_residential_population, all_suburbs, suburb_names);
+		brisbane.move_civilians_randomly(2, entertainment_population, all_suburbs, suburb_names);
+		brisbane.move_civilians_randomly(3, industrial_population, all_suburbs, suburb_names);
+		brisbane.move_civilians_randomly(4, commercial_population, all_suburbs, suburb_names);
+		brisbane.move_civilians_randomly(5, administrative_population, all_suburbs, suburb_names);
+		brisbane.move_civilians_randomly(6, train_station_population, all_suburbs, suburb_names);
+		brisbane.move_civilians_randomly(7, prison_population, all_suburbs, suburb_names);
 
-		// randomly trigger natural disaster every n turns
+		// randomly trigger natural disaster
 		if (uniform_int_distribution<int>(1, 10)(mt) == 1) { // 10% chance of natural disaster each turn
-			cout << "Natural disaster occurred! Evacuating civilians to closest suburbs..." << endl;
-			brisbane.evacuate_to_closest_suburbs();
+			uniform_int_distribution<int> suburb_disaster(0, 7);
+			int disaster_suburb = suburb_disaster(mt);
+
+			cout << "Natural disaster occurred in " << all_suburbs[disaster_suburb] << "! Enter any key to evacuate civilians." << endl;
+			cin >> choice;
+
+			brisbane.evacuate_to_closest_suburbs(disaster_suburb, *all_suburbs[disaster_suburb], all_suburbs, suburb_names);
 		}
 
 		// ask player if they want to continue simulation
-		char choice;
 		cout << "Continue simulation? (y/n): ";
 		cin >> choice;
 		continue_simulation = (choice == 'y' || choice == 'Y');
