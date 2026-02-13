@@ -6,6 +6,7 @@
 #include <chrono>
 #include <thread>
 #include <array>
+#include <vector>
 using namespace std;
 
 struct City {
@@ -41,6 +42,19 @@ struct City {
 
 	// helper function to distribute population among civilian types
 	SuburbPopulation::Civilians distribute_civilians(unsigned int total_population, float worker_ratio = 0.6f, float teacher_ratio = 0.25f, float artist_ratio = 0.15f) {
+		unsigned int workers = static_cast<unsigned int>(total_population * worker_ratio);
+		unsigned int teachers = static_cast<unsigned int>(total_population * teacher_ratio);
+		unsigned int artists = static_cast<unsigned int>(total_population * artist_ratio);
+
+		return {
+			{"workers", workers},
+			{"teachers", teachers},
+			{"artists", artists}
+		};
+	}
+
+	SuburbPopulation::Civilians redistribute_Population(unsigned int total_population, float worker_ratio = 0.6f, float teacher_ratio = 0.25f, float artist_ratio = 0.15f) {
+		// redistribute population after civilians have moved to new suburbs
 		unsigned int workers = static_cast<unsigned int>(total_population * worker_ratio);
 		unsigned int teachers = static_cast<unsigned int>(total_population * teacher_ratio);
 		unsigned int artists = static_cast<unsigned int>(total_population * artist_ratio);
@@ -93,7 +107,7 @@ struct City {
 
 				cout << moveCount << " civilians moved from " << suburb_names[suburb_index] << " to " << suburb_names[j] << endl;
 
-				this_thread::sleep_for(chrono::milliseconds(500)); // simulate half a second for civilians to move between suburbs
+				this_thread::sleep_for(chrono::milliseconds(100)); // simulate half a second for civilians to move between suburbs
 			}
 		}
 
@@ -102,19 +116,20 @@ struct City {
 
 	void evacuate_to_closest_suburbs(int suburb_index, SuburbPopulation& population_i, array<SuburbPopulation*, 8>& all_suburbs, const char* const suburb_names[]) {
 		// logic to evacuate civilians to the closest suburbs in case of a natural disaster
+		vector<int> adjacent_suburbs;
+
 		for (int j = 0; j < 8; ++j) {
+			if (suburb_index != j && is_Adjacent(static_cast<Suburbs>(suburb_index), static_cast<Suburbs>(j))) {
+				adjacent_suburbs.push_back(j);
+			}
+		}
 
-
-			//if (suburb_index != j && is_Adjacent(static_cast<Suburbs>(suburb_index), static_cast<Suburbs>(j))) {
-			//	int evacCount = static_cast<int>(population_i.population);
-
-			//	population_i.population -= evacCount;
-			//	all_suburbs[j]->population += evacCount;
-
-			//	this_thread::sleep_for(chrono::milliseconds(300)); // simulate 300 milliseconds for evacuation
-
-			//	cout << evacCount << " civilians evacuated from " << suburb_names[suburb_index] << " to " << suburb_names[j] << endl;
-			//}
+		int evacCount = static_cast<int>(population_i.population / adjacent_suburbs.size());
+		for (int sub : adjacent_suburbs) {
+			population_i.population -= evacCount;
+			all_suburbs[sub]->population += evacCount;
+			this_thread::sleep_for(chrono::milliseconds(300)); // simulate 300 milliseconds for evacuation
+			cout << evacCount << " civilians evacuated from " << suburb_names[suburb_index] << " to " << suburb_names[sub] << endl;
 		}
 	}
 
@@ -209,15 +224,25 @@ int main() {
 		brisbane.move_civilians_randomly(7, prison_population, all_suburbs, suburb_names);
 
 		// randomly trigger natural disaster
-		if (uniform_int_distribution<int>(1, 10)(mt) == 1) { // 10% chance of natural disaster each turn
+		if (uniform_int_distribution<int>(1, 1)(mt) == 1) { // 10% chance of natural disaster each turn
 			uniform_int_distribution<int> suburb_disaster(0, 7);
 			int disaster_suburb = suburb_disaster(mt);
 
-			cout << "Natural disaster occurred in " << all_suburbs[disaster_suburb] << "! Enter any key to evacuate civilians." << endl;
+			cout << "Natural disaster occurred in " << suburb_names[disaster_suburb] << "! Enter any key to evacuate civilians." << endl;
 			cin >> choice;
 
 			brisbane.evacuate_to_closest_suburbs(disaster_suburb, *all_suburbs[disaster_suburb], all_suburbs, suburb_names);
 		}
+
+		// redistribute civilian type population
+		low_residential_population = { City::low_residential, brisbane.redistribute_Population(low_residential_population.population)};
+		high_residential_population = { City::high_residential, brisbane.redistribute_Population(high_residential_population.population) };
+		entertainment_population = { City::entertainment, brisbane.redistribute_Population(entertainment_population.population) };
+		industrial_population = { City::industrial, brisbane.redistribute_Population(industrial_population.population) };
+		commercial_population = { City::commercial, brisbane.redistribute_Population(commercial_population.population) };
+		administrative_population = { City::administrative, brisbane.redistribute_Population(administrative_population.population) };
+		train_station_population = { City::train_station, brisbane.redistribute_Population(train_station_population.population) };
+		prison_population = { City::prison, brisbane.redistribute_Population(prison_population.population) };
 
 		// ask player if they want to continue simulation
 		cout << "Continue simulation? (y/n): ";
